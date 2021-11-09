@@ -1,6 +1,6 @@
 # Advent of Code 2021
 
-My solutions for [Advent of Code 2021](https://adventofcode.com/2015).
+My solutions for [Advent of Code 2021](https://adventofcode.com/2021).
 
 Implemented using the [cargo-aoc](https://github.com/gobanos/cargo-aoc) tool.
 
