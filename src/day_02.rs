@@ -61,6 +61,29 @@ fn solve_part_1(commands: &Vec<Command>) -> i64 {
     return x_pos * y_pos;
 }
 
+#[aoc(day2, part2)]
+fn solve_part_2(commands: &Vec<Command>) -> i64 {
+    // Submarine starts with depth, horizonal and aim of 0
+    let mut x_pos: i64 = 0;
+    let mut y_pos: i64 = 0;
+    let mut aim: i64 = 0;
+    for command in commands {
+        match command {
+            Command::Forward{units} => {
+                x_pos += units;
+                y_pos += aim * units;
+            },
+            Command::Down{units} => {
+                aim += units;
+            },
+            Command::Up{units} => {
+                aim -= units;
+            }
+        }
+    }
+    return x_pos * y_pos;
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -71,5 +94,12 @@ mod test {
         let input = parse_input(&read_to_string("./input/2021/day2.txt").unwrap());
         let result = solve_part_1(&input);
         assert_eq!(1524750, result);
+    }
+
+    #[test]
+    fn test_d02_p2_actual() {
+        let input = parse_input(&read_to_string("./input/2021/day2.txt").unwrap());
+        let result = solve_part_2(&input);
+        assert_eq!(1592426537, result);
     }
 }
