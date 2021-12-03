@@ -16,6 +16,16 @@ fn parse_input(input: &str) -> Vec<Vec<u8>> {
 
 #[aoc(day3, part1)]
 fn solve_part_1(values: &Vec<Vec<u8>>) -> u64 {
+    // Calculate the binary representations of the gamma and epsilon rates
+    let (gamma_binary, epsilon_binary) = calculate_gamma_and_epsilon_binaries(values);
+    // Convert gamma and epsilon rates from binary representations
+    let gamma_rate = u64::from_str_radix(&gamma_binary, 2).unwrap();
+    let epsilon_rate = u64::from_str_radix(&epsilon_binary, 2).unwrap();
+    let power_rate = gamma_rate * epsilon_rate;
+    return power_rate;
+}
+
+fn calculate_index_value_frequencies(values: &Vec<Vec<u8>>) -> (HashMap<usize, usize>, HashMap<usize, usize>) {
     // Initialise the hash maps storing index frequency counts
     let mut tracker_zero: HashMap<usize, usize> = HashMap::new();
     let mut tracker_one: HashMap<usize, usize> = HashMap::new();
@@ -33,6 +43,11 @@ fn solve_part_1(values: &Vec<Vec<u8>>) -> u64 {
             }
         }
     }
+    return (tracker_zero, tracker_one);
+}
+
+fn calculate_gamma_and_epsilon_binaries(values: &Vec<Vec<u8>>) -> (String, String) {
+    let (tracker_zero, tracker_one) = calculate_index_value_frequencies(values);
     // Check which values are least and most comment for each index
     let mut gamma_binary = String::new();
     let mut epsilon_binary = String::new();
@@ -45,11 +60,82 @@ fn solve_part_1(values: &Vec<Vec<u8>>) -> u64 {
             epsilon_binary.push('0');
         }
     }
-    // Convert gamma and epsilon rates from binary representations
-    let gamma_rate = u64::from_str_radix(&gamma_binary, 2).unwrap();
-    let epsilon_rate = u64::from_str_radix(&epsilon_binary, 2).unwrap();
-    let power_rate = gamma_rate * epsilon_rate;
-    return power_rate;
+    return (gamma_binary, epsilon_binary);
+}
+
+#[aoc(day3, part2)]
+fn solve_part_2(values: &Vec<Vec<u8>>) -> u64 {
+    // Determine oxygen generator rating
+    let mut oxygen_values = values.clone();
+    let mut oxygen_i = 0;
+    loop {
+        if oxygen_values.len() == 1 {
+            break;
+        }
+        let mut new_values: Vec<Vec<u8>> = vec![];
+        // Recalculate index value frequencies
+        let (tracker_zero, tracker_one) = calculate_index_value_frequencies(&oxygen_values);
+        let target = {
+            if tracker_one.get(&oxygen_i).unwrap() >= tracker_zero.get(&oxygen_i).unwrap() {
+                1
+            } else {
+                0
+            }
+        };
+        // Check current most frequent character
+        for oxygen_value in oxygen_values {
+            if oxygen_value[oxygen_i] == target {
+                new_values.push(oxygen_value.clone());
+            }
+        }
+        oxygen_values = new_values;
+        oxygen_i += 1;
+    }
+    let mut oxygen_gen_string = String::new();
+    for i in 0..12 {
+        if oxygen_values[0][i] == 0 {
+            oxygen_gen_string.push('0');
+        } else {
+            oxygen_gen_string.push('1');
+        }
+    }
+    let oxygen_gen_rating = u64::from_str_radix(&oxygen_gen_string, 2).unwrap();
+    // Determine CO2 scrubber rating
+    let mut co2_values = values.clone();
+    let mut co2_i = 0;
+    loop {
+        if co2_values.len() == 1 {
+            break;
+        }
+        let mut new_values: Vec<Vec<u8>> = vec![];
+        // Recalculate index value frequencies
+        let (tracker_zero, tracker_one) = calculate_index_value_frequencies(&co2_values);
+        let target = {
+            if tracker_zero.get(&co2_i).unwrap() <= tracker_one.get(&co2_i).unwrap() {
+                0
+            } else {
+                1
+            }
+        };
+        // Check current most frequent character
+        for co2_value in co2_values {
+            if co2_value[co2_i] == target {
+                new_values.push(co2_value.clone());
+            }
+        }
+        co2_values = new_values;
+        co2_i += 1;
+    }
+    let mut co2_scrubber_string = String::new();
+    for i in 0..12 {
+        if co2_values[0][i] == 0 {
+            co2_scrubber_string.push('0');
+        } else {
+            co2_scrubber_string.push('1');
+        }
+    }
+    let co2_scrubber_rating = u64::from_str_radix(&co2_scrubber_string, 2).unwrap();
+    return oxygen_gen_rating * co2_scrubber_rating;
 }
 
 #[cfg(test)]
@@ -62,5 +148,12 @@ mod test {
         let input = parse_input(&read_to_string("./input/2021/day3.txt").unwrap());
         let result = solve_part_1(&input);
         assert_eq!(3687446, result);
+    }
+
+    #[test]
+    fn test_d03_p2_actual() {
+        let input = parse_input(&read_to_string("./input/2021/day3.txt").unwrap());
+        let result = solve_part_2(&input);
+        assert_eq!(4406844, result);
     }
 }
