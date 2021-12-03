@@ -63,18 +63,19 @@ fn calculate_gamma_and_epsilon_binaries(values: &Vec<Vec<u8>>) -> (String, Strin
     return (gamma_binary, epsilon_binary);
 }
 
-#[aoc(day3, part2)]
-fn solve_part_2(values: &Vec<Vec<u8>>) -> u64 {
-    // Determine oxygen generator rating
+fn calculate_o2_generator_rating(values: &Vec<Vec<u8>>) -> u64 {// Determine oxygen generator rating
+    // Keep track of values remaining and current index
     let mut oxygen_values = values.clone();
     let mut oxygen_i = 0;
     loop {
+        // Stop when we have only one value remaining - this is our oxygen generator rating
         if oxygen_values.len() == 1 {
             break;
         }
         let mut new_values: Vec<Vec<u8>> = vec![];
         // Recalculate index value frequencies
         let (tracker_zero, tracker_one) = calculate_index_value_frequencies(&oxygen_values);
+        // Target value for current index is most common value, or 1 in event of tie
         let target = {
             if tracker_one.get(&oxygen_i).unwrap() >= tracker_zero.get(&oxygen_i).unwrap() {
                 1
@@ -82,15 +83,17 @@ fn solve_part_2(values: &Vec<Vec<u8>>) -> u64 {
                 0
             }
         };
-        // Check current most frequent character
+        // Keep only values with the target value at the current index
         for oxygen_value in oxygen_values {
             if oxygen_value[oxygen_i] == target {
                 new_values.push(oxygen_value.clone());
             }
         }
+        // Replace search values with filtered values and increase index
         oxygen_values = new_values;
         oxygen_i += 1;
     }
+    // Convert the rating from binary to decimal form
     let mut oxygen_gen_string = String::new();
     for i in 0..12 {
         if oxygen_values[0][i] == 0 {
@@ -99,17 +102,22 @@ fn solve_part_2(values: &Vec<Vec<u8>>) -> u64 {
             oxygen_gen_string.push('1');
         }
     }
-    let oxygen_gen_rating = u64::from_str_radix(&oxygen_gen_string, 2).unwrap();
+    return u64::from_str_radix(&oxygen_gen_string, 2).unwrap();
+}
+
+fn calculate_co2_scrubber_rating(values: &Vec<Vec<u8>>) -> u64 {
     // Determine CO2 scrubber rating
     let mut co2_values = values.clone();
     let mut co2_i = 0;
     loop {
+        // Stop when we have only one value remaining - this is our CO2 scrubber rating
         if co2_values.len() == 1 {
             break;
         }
         let mut new_values: Vec<Vec<u8>> = vec![];
         // Recalculate index value frequencies
         let (tracker_zero, tracker_one) = calculate_index_value_frequencies(&co2_values);
+        // Target value for current index is least common value, or 0 in event of tie
         let target = {
             if tracker_zero.get(&co2_i).unwrap() <= tracker_one.get(&co2_i).unwrap() {
                 0
@@ -117,7 +125,7 @@ fn solve_part_2(values: &Vec<Vec<u8>>) -> u64 {
                 1
             }
         };
-        // Check current most frequent character
+        // Keep only the values with the target value at current index
         for co2_value in co2_values {
             if co2_value[co2_i] == target {
                 new_values.push(co2_value.clone());
@@ -126,6 +134,7 @@ fn solve_part_2(values: &Vec<Vec<u8>>) -> u64 {
         co2_values = new_values;
         co2_i += 1;
     }
+    // Convert the rating from binary to decimal form
     let mut co2_scrubber_string = String::new();
     for i in 0..12 {
         if co2_values[0][i] == 0 {
@@ -134,8 +143,14 @@ fn solve_part_2(values: &Vec<Vec<u8>>) -> u64 {
             co2_scrubber_string.push('1');
         }
     }
-    let co2_scrubber_rating = u64::from_str_radix(&co2_scrubber_string, 2).unwrap();
-    return oxygen_gen_rating * co2_scrubber_rating;
+    return u64::from_str_radix(&co2_scrubber_string, 2).unwrap();
+}
+
+#[aoc(day3, part2)]
+fn solve_part_2(values: &Vec<Vec<u8>>) -> u64 {
+    let o2_generator_rating = calculate_o2_generator_rating(values);
+    let co2_scrubber_rating = calculate_co2_scrubber_rating(values);
+    return o2_generator_rating * co2_scrubber_rating;
 }
 
 #[cfg(test)]
