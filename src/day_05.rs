@@ -32,31 +32,11 @@ fn solve_part_1(vent_lines: &Vec<(Point2D, Point2D)>) -> usize {
     let mut overlap_points: HashSet<Point2D> = HashSet::new();
     // Only consider vertical or horizontal lines - diagonals are ignored for this part!
     for (point_1, point_2) in vent_lines {
-        // Check for vertical line
-        if point_1.get_x() == point_2.get_x() {
-            let y_vals: Vec<i64> = vec![point_1.get_y(), point_2.get_y()];
-            let y_min = *y_vals.iter().min().unwrap();
-            let y_max = *y_vals.iter().max().unwrap();
-            for y in y_min..=y_max {
-                let point = Point2D::new(point_1.get_x(), y);
-                let is_new_point = observed_points.insert(point);
-                if !is_new_point {
-                    overlap_points.insert(point);
-                }
-            }
-        // Check for horizontal line
-        } else if point_1.get_y() == point_2.get_y() {
-            let x_vals: Vec<i64> = vec![point_1.get_x(), point_2.get_x()];
-            let x_min = *x_vals.iter().min().unwrap();
-            let x_max = *x_vals.iter().max().unwrap();
-            for x in x_min..=x_max {
-                let point = Point2D::new(x, point_1.get_y());
-                let is_new_point = observed_points.insert(point);
-                if !is_new_point {
-                    overlap_points.insert(point);
-                }
-            }
+        // Ignore diagonals
+        if point_1.get_x() != point_2.get_x() && point_1.get_y() != point_2.get_y() {
+            continue;
         }
+        mark_points_on_map(point_1, point_2, &mut observed_points, &mut overlap_points);
     }
     return overlap_points.len();
 }
@@ -67,48 +47,31 @@ fn solve_part_2(vent_lines: &Vec<(Point2D, Point2D)>) -> usize {
     let mut overlap_points: HashSet<Point2D> = HashSet::new();
     // Consider all lines, including diagonals (assumed 45-degree slope only)
     for (point_1, point_2) in vent_lines {
-        // Check for vertical line
-        if point_1.get_x() == point_2.get_x() {
-            let y_vals: Vec<i64> = vec![point_1.get_y(), point_2.get_y()];
-            let y_min = *y_vals.iter().min().unwrap();
-            let y_max = *y_vals.iter().max().unwrap();
-            for y in y_min..=y_max {
-                let point = Point2D::new(point_1.get_x(), y);
-                let is_new_point = observed_points.insert(point);
-                if !is_new_point {
-                    overlap_points.insert(point);
-                }
-            }
-        // Check for horizontal line
-        } else if point_1.get_y() == point_2.get_y() {
-            let x_vals: Vec<i64> = vec![point_1.get_x(), point_2.get_x()];
-            let x_min = *x_vals.iter().min().unwrap();
-            let x_max = *x_vals.iter().max().unwrap();
-            for x in x_min..=x_max {
-                let point = Point2D::new(x, point_1.get_y());
-                let is_new_point = observed_points.insert(point);
-                if !is_new_point {
-                    overlap_points.insert(point);
-                }
-            }
-        // Otherwise, the line is a diagonal
-        } else {
-            // Generate the co-ordinate pairs describing the diagonal line
-            let delta_x = (point_2.get_x() - point_1.get_x()).signum();
-            let delta_y = (point_2.get_y() - point_1.get_y()).signum();
-            let mut point = point_1.clone();
-            while point.get_x() != point_2.get_x() + delta_x
-                && point.get_y() != point_2.get_y() + delta_y
-            {
-                let is_new_point = observed_points.insert(point);
-                if !is_new_point {
-                    overlap_points.insert(point);
-                }
-                point.move_point(delta_x, delta_y);
-            }
-        }
+        mark_points_on_map(point_1, point_2, &mut observed_points, &mut overlap_points);
     }
     return overlap_points.len();
+}
+
+/// Marks all points on the map between the specified start and end points. All observed and
+/// overlapping points are recorded in the given HashSets.
+fn mark_points_on_map(
+    point_1: &Point2D,
+    point_2: &Point2D,
+    observed: &mut HashSet<Point2D>,
+    overlap: &mut HashSet<Point2D>,
+) {
+    // Calculate the co-ordinate deltas so we know what direction the line is pointing
+    let delta_x = (point_2.get_x() - point_1.get_x()).signum();
+    let delta_y = (point_2.get_y() - point_1.get_y()).signum();
+    let mut point = point_1.clone();
+    // Keep adding points until we get to the end point
+    while point.get_x() != point_2.get_x() + delta_x || point.get_y() != point_2.get_y() + delta_y {
+        let is_new_point = observed.insert(point);
+        if !is_new_point {
+            overlap.insert(point);
+        }
+        point.move_point(delta_x, delta_y);
+    }
 }
 
 #[cfg(test)]
