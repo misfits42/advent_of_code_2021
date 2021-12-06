@@ -1,55 +1,49 @@
-#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
-struct LanternFish {
-    timer: u64
-}
-
-impl LanternFish {
-    pub fn new(initial_age: u64) -> Self {
-        Self {
-            timer: initial_age
-        }
-    }
-
-    pub fn decrement_timer(&mut self) -> bool {
-        if self.timer == 0 {
-            self.timer = 6;
-            return true;
-        } else {
-            self.timer -= 1;
-            return false;
-        }
-    }
-}
+use std::collections::HashMap;
 
 #[aoc_generator(day6)]
-fn parse_input(input: &str) -> Vec<LanternFish> {
-    let mut output: Vec<LanternFish> = vec![];
+fn parse_input(input: &str) -> HashMap<u64, u64> {
+    // Track remaining timer as key and number of occurrences as value
+    let mut output: HashMap<u64, u64> = HashMap::new();
     let initial_ages = input.lines().next().unwrap().split(",").map(|x| x.parse::<u64>().unwrap());
     for age in initial_ages {
-        let lantern_fish = LanternFish::new(age);
-        output.push(lantern_fish);
+        *output.entry(age).or_insert(0) += 1;
     }
     return output;
 }
 
 #[aoc(day6, part1)]
-fn solve_part_1(initial_fish: &Vec<LanternFish>) -> usize {
-    let mut fish_pop = initial_fish.clone();
+fn solve_part_1(initial_fish: &HashMap<u64, u64>) -> u64 {
+    let mut current_fish = initial_fish.clone();
     // Simulate for 80 days
     for _ in 0..80 {
-        // For each day, track how many new fish are made
-        let mut new_fish_spawned = 0;
-        for fish in fish_pop.iter_mut() {
-            let new_fish = fish.decrement_timer();
-            if new_fish {
-                new_fish_spawned += 1;
+        current_fish = conduct_single_turn(&current_fish);
+    }
+    return current_fish.values().sum();
+}
+
+fn conduct_single_turn(current_fish: &HashMap<u64, u64>) -> HashMap<u64, u64> {
+    let mut new_fish: HashMap<u64, u64> = HashMap::new();
+    for (k, v) in current_fish.iter() {
+        match k {
+            0 => {
+                new_fish.insert(8, *v);
+                if new_fish.contains_key(&6) {
+                    *new_fish.get_mut(&6).unwrap() += v;
+                } else {
+                    new_fish.insert(6, *v);
+                }
+            },
+            _ => {
+                let new_timer = k - 1;
+                if new_fish.contains_key(&new_timer) {
+                    *new_fish.get_mut(&new_timer).unwrap() += v;
+                } else {
+                    new_fish.insert(new_timer, *v);
+                }
             }
         }
-        for _ in 0..new_fish_spawned {
-            fish_pop.push(LanternFish::new(8));
-        }
     }
-    return fish_pop.len();
+    return new_fish;
 }
 
 #[cfg(test)]
@@ -57,7 +51,6 @@ mod test {
     use super::*;
     use std::fs::*;
 
-    // Test cases go here
     #[test]
     fn test_d06_p1_actual() {
         let input = parse_input(&read_to_string("./input/2021/day6.txt").unwrap());
