@@ -17,6 +17,34 @@ fn parse_input(input: &str) -> Vec<Vec<u64>> {
     return output;
 }
 
+#[aoc(day11, part1)]
+fn solve_part_1(input: &Vec<Vec<u64>>) -> usize {
+    let mut octopus_map = input.clone();
+    let mut total_flash_count = 0;
+    // Conduct 100 turns
+    for _ in 0..100 {
+        total_flash_count += conduct_step_octopus_map(&mut octopus_map);
+    }
+    return total_flash_count;
+}
+
+#[aoc(day11, part2)]
+fn solve_part_2(input: &Vec<Vec<u64>>) -> usize {
+    let mut octopus_map = input.clone();
+    let mut turns_conducted = 0;
+    loop {
+        turns_conducted += 1;
+        let flashes_on_turn = conduct_step_octopus_map(&mut octopus_map);
+        // Check if all the octopii flashed on the current turn
+        if flashes_on_turn == 100 {
+            break;
+        }
+    }
+    return turns_conducted;
+}
+
+/// Conducts one step for the current octopus map, updating it as octopii energy is changed and
+/// various octopii flash.
 fn conduct_step_octopus_map(octopus_map: &mut Vec<Vec<u64>>) -> usize {
     // Track which octopii have flashed on the current turn
     let mut flash_locations: HashSet<(usize, usize)> = HashSet::new();
@@ -45,76 +73,16 @@ fn conduct_step_octopus_map(octopus_map: &mut Vec<Vec<u64>>) -> usize {
             }
             flash_locations.insert((*x, *y));
             // Increase energy level of all surrounding points by 1
-            let new_points: Vec<(usize, usize)> = {
-                // Top left
-                if *x == 0 && *y == 0 {
-                    vec![(*x, y + 1), (x + 1, y + 1), (x + 1, *y)]
-                // Bottom left
-                } else if *x == 0 && *y == octopus_map.len() - 1 {
-                    vec![(*x, y - 1), (x + 1, y - 1), (x + 1, *y)]
-                // Mid left
-                } else if *x == 0 && *y < octopus_map.len() - 1 {
-                    vec![
-                        (*x, y - 1),
-                        (x + 1, y - 1),
-                        (x + 1, *y),
-                        (x + 1, y + 1),
-                        (*x, y + 1),
-                    ]
-                // Top right
-                } else if *x == octopus_map[*y].len() - 1 && *y == 0 {
-                    vec![(x - 1, *y), (x - 1, y + 1), (*x, y + 1)]
-                // Top mid
-                } else if *x < octopus_map[*y].len() - 1 && *y == 0 {
-                    vec![
-                        (x - 1, *y),
-                        (x - 1, y + 1),
-                        (*x, y + 1),
-                        (x + 1, y + 1),
-                        (x + 1, *y),
-                    ]
-                // Bottom right
-                } else if *x == octopus_map[*y].len() - 1 && *y == octopus_map.len() - 1 {
-                    vec![(x - 1, *y), (x - 1, y - 1), (*x, y - 1)]
-                // Bottom mid
-                } else if *x < octopus_map[*y].len() - 1 && *y == octopus_map.len() - 1 {
-                    vec![
-                        (x - 1, *y),
-                        (x - 1, y - 1),
-                        (*x, y - 1),
-                        (x + 1, y - 1),
-                        (x + 1, *y),
-                    ]
-                // Mid right
-                } else if *x == octopus_map[*y].len() - 1 && *y < octopus_map.len() - 1 {
-                    vec![
-                        (*x, y + 1),
-                        (x - 1, y + 1),
-                        (x - 1, *y),
-                        (x - 1, y - 1),
-                        (*x, y - 1),
-                    ]
-                } else {
-                    vec![
-                        (x - 1, y - 1),
-                        (*x, y - 1),
-                        (x + 1, y - 1),
-                        (x + 1, *y),
-                        (x + 1, y + 1),
-                        (*x, y + 1),
-                        (x - 1, y + 1),
-                        (x - 1, *y),
-                    ]
-                }
-            };
-            for (new_x, new_y) in new_points {
+            let neighbour_points =
+                get_surrounding_points(*x, *y, octopus_map[*y].len() - 1, octopus_map.len() - 1);
+            for (x_nb, y_nb) in neighbour_points {
                 // Skip if already flashed this turn
-                if flash_locations.contains(&(new_x, new_y)) {
+                if flash_locations.contains(&(x_nb, y_nb)) {
                     continue;
                 }
-                octopus_map[new_y][new_x] += 1;
-                if octopus_map[new_y][new_x] > 9 {
-                    next_to_flash.insert((new_x, new_y));
+                octopus_map[y_nb][x_nb] += 1;
+                if octopus_map[y_nb][x_nb] > 9 {
+                    next_to_flash.insert((x_nb, y_nb));
                 }
             }
         }
@@ -127,30 +95,69 @@ fn conduct_step_octopus_map(octopus_map: &mut Vec<Vec<u64>>) -> usize {
     return flash_locations.len();
 }
 
-#[aoc(day11, part1)]
-fn solve_part_1(input: &Vec<Vec<u64>>) -> usize {
-    let mut octopus_map = input.clone();
-    let mut total_flash_count = 0;
-    // Conduct 100 turns
-    for _ in 0..100 {
-        total_flash_count += conduct_step_octopus_map(&mut octopus_map);
+/// Calculates the points around (x, y) in a 2D grid with non-negative indices bounded by given
+/// maximum x- and y-values.
+fn get_surrounding_points(x: usize, y: usize, x_max: usize, y_max: usize) -> Vec<(usize, usize)> {
+    // Top left
+    if x == 0 && y == 0 {
+        vec![(x, y + 1), (x + 1, y + 1), (x + 1, y)]
+    // Bottom left
+    } else if x == 0 && y == y_max {
+        vec![(x, y - 1), (x + 1, y - 1), (x + 1, y)]
+    // Mid left
+    } else if x == 0 && y < y_max {
+        vec![
+            (x, y - 1),
+            (x + 1, y - 1),
+            (x + 1, y),
+            (x + 1, y + 1),
+            (x, y + 1),
+        ]
+    // Top right
+    } else if x == x_max && y == 0 {
+        vec![(x - 1, y), (x - 1, y + 1), (x, y + 1)]
+    // Top mid
+    } else if x < x_max && y == 0 {
+        vec![
+            (x - 1, y),
+            (x - 1, y + 1),
+            (x, y + 1),
+            (x + 1, y + 1),
+            (x + 1, y),
+        ]
+    // Bottom right
+    } else if x == x_max && y == y_max {
+        vec![(x - 1, y), (x - 1, y - 1), (x, y - 1)]
+    // Bottom mid
+    } else if x < x_max && y == y_max {
+        vec![
+            (x - 1, y),
+            (x - 1, y - 1),
+            (x, y - 1),
+            (x + 1, y - 1),
+            (x + 1, y),
+        ]
+    // Mid right
+    } else if x == x_max && y < y_max {
+        vec![
+            (x, y + 1),
+            (x - 1, y + 1),
+            (x - 1, y),
+            (x - 1, y - 1),
+            (x, y - 1),
+        ]
+    } else {
+        vec![
+            (x - 1, y - 1),
+            (x, y - 1),
+            (x + 1, y - 1),
+            (x + 1, y),
+            (x + 1, y + 1),
+            (x, y + 1),
+            (x - 1, y + 1),
+            (x - 1, y),
+        ]
     }
-    return total_flash_count;
-}
-
-#[aoc(day11, part2)]
-fn solve_part_2(input: &Vec<Vec<u64>>) -> usize {
-    let mut octopus_map = input.clone();
-    let mut turns_conducted = 0;
-    loop {
-        turns_conducted += 1;
-        let flashes_on_turn = conduct_step_octopus_map(&mut octopus_map);
-        // Check if all the octopii flashed on the current turn
-        if flashes_on_turn == 100 {
-            break;
-        }
-    }
-    return turns_conducted;
 }
 
 #[cfg(test)]
