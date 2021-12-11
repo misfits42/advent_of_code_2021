@@ -21,57 +21,31 @@ fn solve_part_1(navsys_lines: &Vec<String>) -> u64 {
         let mut brace_stack: VecDeque<char> = VecDeque::new();
         for c in line.chars() {
             match c {
+                // Add the opening braces to the stack
                 '(' | '[' | '{' | '<' => {
                     brace_stack.push_back(c);
                 },
+                // For closing braces, check if there are any open braces and if last one is closed
                 ')' => {
-                    // Check if there are any open braces on stack
-                    if brace_stack.is_empty() {
-                        total_syntax_error_score += 3;
-                        break;
-                    }
-                    // Pop off the last opening brace seen and check if current brace closes it
-                    let last_open_brace = brace_stack.pop_back().unwrap();
-                    if last_open_brace != '(' {
+                    if brace_stack.is_empty() || brace_stack.pop_back().unwrap() != '(' {
                         total_syntax_error_score += 3;
                         break;
                     }
                 },
                 ']' => {
-                    // Check if there are any open braces on stack
-                    if brace_stack.is_empty() {
-                        total_syntax_error_score += 57;
-                        break;
-                    }
-                    // Pop off the last opening brace seen and check if current brace closes it
-                    let last_open_brace = brace_stack.pop_back().unwrap();
-                    if last_open_brace != '[' {
+                    if brace_stack.is_empty() || brace_stack.pop_back().unwrap() != '[' {
                         total_syntax_error_score += 57;
                         break;
                     }
                 },
                 '}' => {
-                    // Check if there are any open braces on stack
-                    if brace_stack.is_empty() {
-                        total_syntax_error_score += 1197;
-                        break;
-                    }
-                    // Pop off the last opening brace seen and check if current brace closes it
-                    let last_open_brace = brace_stack.pop_back().unwrap();
-                    if last_open_brace != '{' {
+                    if brace_stack.is_empty() || brace_stack.pop_back().unwrap() != '{' {
                         total_syntax_error_score += 1197;
                         break;
                     }
                 },
                 '>' => {
-                    // Check if there are any open braces on stack
-                    if brace_stack.is_empty() {
-                        total_syntax_error_score += 25137;
-                        break;
-                    }
-                    // Pop off the last opening brace seen and check if current brace closes it
-                    let last_open_brace = brace_stack.pop_back().unwrap();
-                    if last_open_brace != '<' {
+                    if brace_stack.is_empty() || brace_stack.pop_back().unwrap() != '<' {
                         total_syntax_error_score += 25137;
                         break;
                     }
