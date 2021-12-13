@@ -31,37 +31,40 @@ fn parse_input(input: &str) -> (HashSet<Point2D>, Vec<Point2D>) {
     return (points_map, fold_instructions);
 }
 
-#[aoc(day13, part1)]
-fn solve_part_1(dot_instructions: &(HashSet<Point2D>, Vec<Point2D>)) -> usize {
-    // Apply only the first fold instruction
-    let dot_locs = &dot_instructions.0;
-    let fold_instr = &dot_instructions.1;
+fn apply_fold_instruction(dot_locs: &HashSet<Point2D>, fold_instr: &Point2D) -> HashSet<Point2D> {
     let mut new_dot_locs: HashSet<Point2D> = HashSet::new();
     for dot_loc in dot_locs.iter() {
         // x-fold instruction
-        if fold_instr[0].get_x() > 0 {
+        if fold_instr.get_x() > 0 {
             // Dot is not on the half being folded up
-            if dot_loc.get_x() <= fold_instr[0].get_x() {
+            if dot_loc.get_x() <= fold_instr.get_x() {
                 new_dot_locs.insert(*dot_loc);
             } else {
                 // Calculate new x
-                let delta_x = dot_loc.get_x() - fold_instr[0].get_x();
-                let new_dot = Point2D::new(fold_instr[0].get_x() - delta_x, dot_loc.get_y());
+                let delta_x = dot_loc.get_x() - fold_instr.get_x();
+                let new_dot = Point2D::new(fold_instr.get_x() - delta_x, dot_loc.get_y());
                 new_dot_locs.insert(new_dot);
             }
         // y-fold instruction
         } else {
             // Dot is not on the half being folded up
-            if dot_loc.get_y() <= fold_instr[0].get_y() {
+            if dot_loc.get_y() <= fold_instr.get_y() {
                 new_dot_locs.insert(*dot_loc);
             } else {
                 // Calculate new y
-                let delta_y = dot_loc.get_y() - fold_instr[0].get_y();
-                let new_dot = Point2D::new(dot_loc.get_y(), fold_instr[0].get_y() - delta_y);
+                let delta_y = dot_loc.get_y() - fold_instr.get_y();
+                let new_dot = Point2D::new(dot_loc.get_y(), fold_instr.get_y() - delta_y);
                 new_dot_locs.insert(new_dot);
             }
         }
     }
+    return new_dot_locs;
+}
+
+#[aoc(day13, part1)]
+fn solve_part_1(dot_instructions: &(HashSet<Point2D>, Vec<Point2D>)) -> usize {
+    // Apply only the first fold instruction
+    let new_dot_locs = apply_fold_instruction(&dot_instructions.0, &dot_instructions.1[0]);
     return new_dot_locs.len();
 }
 
