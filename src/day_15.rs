@@ -1,5 +1,6 @@
-use std::collections::HashMap;
 use std::collections::HashSet;
+
+use priority_queue::DoublePriorityQueue;
 
 use super::utils::map::*;
 
@@ -57,7 +58,13 @@ fn solve_part_2(risk_map: &Vec<Vec<u64>>) -> u64 {
     // Shortest path
     let start_node = (0, 0);
     let end_node = (dists.len() - 1, dists[0].len() - 1);
-    find_shortest_path_dijkstra(start_node, end_node, &new_risk_map, &mut unvisited, &mut dists);
+    find_shortest_path_dijkstra(
+        start_node,
+        end_node,
+        &new_risk_map,
+        &mut unvisited,
+        &mut dists,
+    );
     return dists[end_node.1][end_node.0];
 }
 
@@ -69,31 +76,22 @@ fn find_shortest_path_dijkstra(
     unvisited: &mut HashSet<(usize, usize)>,
     dists: &mut Vec<Vec<u64>>,
 ) {
-    let mut unvisted_dists: HashMap<(usize, usize), u64> = HashMap::new();
-    unvisted_dists.insert(start_node, 0);
+    // Insert the start node into the visit queye with distance 0
+    let mut visit_queue: DoublePriorityQueue<(usize, usize), u64> = DoublePriorityQueue::new();
+    visit_queue.push(start_node, 0);
     while !unvisited.is_empty() {
-        // Stop if there are no neighbour candidates with non-infinite distance
-        if unvisted_dists.is_empty() {
+        // Stop if there are no more neighbours to visit
+        if visit_queue.is_empty() {
             return;
         }
         // Find the unvisited node with the smallest distance
-        let current_node = {
-            let mut min_key: Option<(usize, usize)> = None;
-            let mut min_value = u64::MAX;
-            for (key, value) in unvisted_dists.iter() {
-                if *value < min_value {
-                    min_value = *value;
-                    min_key = Some(*key);
-                }
-            }
-            min_key.unwrap()
-        };
+        let (current_node, current_dist) = visit_queue.pop_min().unwrap();
         if current_node == end_node {
             return;
         }
         // Mark current node as visited
         unvisited.remove(&current_node);
-        unvisted_dists.remove(&current_node);
+        visit_queue.remove(&current_node);
         // Determine distance from current node for all unvisited neighbour nodes
         let neighbour_nodes = get_surrounding_points_no_diagonals(
             current_node.0,
@@ -105,14 +103,11 @@ fn find_shortest_path_dijkstra(
             if !unvisited.contains(&neighbour_node) {
                 continue;
             }
-            let new_distance = dists[current_node.1][current_node.0]
-                + risk_map[neighbour_node.1][neighbour_node.0];
-            let existing_distance = dists[neighbour_node.1][neighbour_node.0];
+            // Calculate new distance and update if needed
+            let new_distance = current_dist + risk_map[neighbour_node.1][neighbour_node.0];
             if new_distance < dists[neighbour_node.1][neighbour_node.0] {
                 dists[neighbour_node.1][neighbour_node.0] = new_distance;
-                unvisted_dists.insert(neighbour_node, new_distance);
-            } else {
-                unvisted_dists.insert(neighbour_node, existing_distance);
+                visit_queue.push(neighbour_node, new_distance);
             }
         }
     }
