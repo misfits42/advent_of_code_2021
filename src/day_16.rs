@@ -40,16 +40,44 @@ fn solve_part_1(binary_string: &String) -> u64 {
     let type_id = process_version_or_type_number(&binary_digits, &mut cursor);
     // Handle literal packet
     if type_id == 4 {
-        let (_literal, _total_packet_chars) = process_literal_packet(&binary_digits, &mut cursor, true);
+        let (_literal, _total_packet_chars) =
+            process_literal_packet(&binary_digits, &mut cursor, true);
     // Handle operator packet
     } else {
-        let (sub_version_sum, _total_packet_chars) = process_operator_packet(&binary_digits, &mut cursor, true);
+        let (_result, sub_version_sum, _total_packet_chars) =
+            process_operator_packet(&binary_digits, &mut cursor, type_id, true);
         version_sum += sub_version_sum;
     }
     return version_sum;
 }
 
-fn process_operator_packet(binary_digits: &Vec<char>, cursor: &mut usize, has_zero_padding: bool) -> (u64, usize) {
+#[aoc(day16, part2)]
+fn solve_part_2(binary_string: &String) -> u64 {
+    let binary_digits = binary_string.chars().collect::<Vec<char>>();
+    let mut cursor = 0;
+    // Handle the single top level packet
+    let _version_id = process_version_or_type_number(&binary_digits, &mut cursor);
+    let type_id = process_version_or_type_number(&binary_digits, &mut cursor);
+    let result = {
+        if type_id == 4 {
+            let (literal, _total_packet_chars) =
+                process_literal_packet(&binary_digits, &mut cursor, true);
+            literal
+        } else {
+            let (result, _sub_version_sum, _total_packet_chars) =
+                process_operator_packet(&binary_digits, &mut cursor, type_id, true);
+            result
+        }
+    };
+    return result;
+}
+
+fn process_operator_packet(
+    binary_digits: &Vec<char>,
+    cursor: &mut usize,
+    op_type: u64,
+    has_zero_padding: bool,
+) -> (u64, u64, usize) {
     let mut version_sum = 0;
     // Take into account the packet version and type already processed
     let mut total_packet_chars = 6;
@@ -57,6 +85,8 @@ fn process_operator_packet(binary_digits: &Vec<char>, cursor: &mut usize, has_ze
     let operator_mode = binary_digits[*cursor].to_digit(10).unwrap();
     *cursor += 1;
     total_packet_chars += 1;
+    // Record values from nested packets
+    let mut sub_results: Vec<u64> = vec![];
     // Calculate L value
     let l_val = {
         let mut l_string = String::new();
@@ -82,10 +112,13 @@ fn process_operator_packet(binary_digits: &Vec<char>, cursor: &mut usize, has_ze
             version_sum += version_id;
             let type_id = process_version_or_type_number(binary_digits, cursor);
             if type_id == 4 {
-                let (_literal, total_chars) = process_literal_packet(binary_digits, cursor, false);
+                let (literal, total_chars) = process_literal_packet(binary_digits, cursor, false);
+                sub_results.push(literal);
                 total_subpacket_chars += total_chars;
             } else {
-                let (sub_version_sum, total_chars) = process_operator_packet(binary_digits, cursor, false);
+                let (result, sub_version_sum, total_chars) =
+                    process_operator_packet(binary_digits, cursor, type_id, false);
+                sub_results.push(result);
                 version_sum += sub_version_sum;
                 total_subpacket_chars += total_chars;
             }
@@ -98,10 +131,13 @@ fn process_operator_packet(binary_digits: &Vec<char>, cursor: &mut usize, has_ze
             version_sum += version_id;
             let type_id = process_version_or_type_number(binary_digits, cursor);
             if type_id == 4 {
-                let (_literal, total_chars) = process_literal_packet(binary_digits, cursor, false);
+                let (literal, total_chars) = process_literal_packet(binary_digits, cursor, false);
+                sub_results.push(literal);
                 total_subpacket_chars += total_chars;
             } else {
-                let (sub_version_sum, total_chars) = process_operator_packet(binary_digits, cursor, false);
+                let (result, sub_version_sum, total_chars) =
+                    process_operator_packet(binary_digits, cursor, type_id, false);
+                sub_results.push(result);
                 version_sum += sub_version_sum;
                 total_subpacket_chars += total_chars;
             }
@@ -112,7 +148,36 @@ fn process_operator_packet(binary_digits: &Vec<char>, cursor: &mut usize, has_ze
     if has_zero_padding {
         *cursor += total_packet_chars % 8;
     }
-    return (version_sum, total_packet_chars);
+    // Calculate the result for current operator packet
+    let result = match op_type {
+        0 => sub_results.iter().sum::<u64>(),
+        1 => sub_results.iter().product::<u64>(),
+        2 => *sub_results.iter().min().unwrap(),
+        3 => *sub_results.iter().max().unwrap(),
+        5 => {
+            if sub_results[0] > sub_results[1] {
+                1
+            } else {
+                0
+            }
+        }
+        6 => {
+            if sub_results[0] < sub_results[1] {
+                1
+            } else {
+                0
+            }
+        }
+        7 => {
+            if sub_results[0] == sub_results[1] {
+                1
+            } else {
+                0
+            }
+        }
+        _ => panic!("Day 16 - bad operator packet type ID: {}", op_type),
+    };
+    return (result, version_sum, total_packet_chars);
 }
 
 /// Processes a literal value
@@ -140,7 +205,10 @@ fn process_literal_packet(
     if has_zero_padding {
         *cursor += total_packet_chars % 8;
     }
-    return (u64::from_str_radix(&literal_string, 2).unwrap(), total_packet_chars);
+    return (
+        u64::from_str_radix(&literal_string, 2).unwrap(),
+        total_packet_chars,
+    );
 }
 
 /// Takes the three characters starting from the cursor and converts them into an integer value.
@@ -164,6 +232,13 @@ mod test {
         let input = parse_input(&read_to_string("./input/2021/day16.txt").unwrap());
         let result = solve_part_1(&input);
         assert_eq!(947, result);
+    }
+
+    #[test]
+    fn test_d16_p2_actual() {
+        let input = parse_input(&read_to_string("./input/2021/day16.txt").unwrap());
+        let result = solve_part_2(&input);
+        assert_eq!(660797830937, result);
     }
 
     #[test]
