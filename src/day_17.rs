@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use regex::Regex;
 
 struct TargetArea {
@@ -74,6 +76,46 @@ fn solve_part_1(target_area: &TargetArea) -> i64 {
     return max_y_position;
 }
 
+#[aoc(day17, part2)]
+fn solve_part_2(target_area: &TargetArea) -> usize {
+    let mut good_vels: HashSet::<(i64, i64)> = HashSet::new();
+    for y in -500..500 {
+        for x in -500..500 {
+            let mut pos = (0, 0);
+            let mut vel = (x, y);
+            let mut reached_target_area = false;
+            loop {
+                // Check if initial conditions mean the probe misses the target area
+                if pos.0 > target_area.x_max || pos.1 < target_area.y_min {
+                    break;
+                }
+                // Update probe position and velocity
+                pos.0 += vel.0;
+                pos.1 += vel.1;
+                if vel.0 < 0 {
+                    vel.0 += 1;
+                } else if vel.0 > 0 {
+                    vel.0 -= 1;
+                }
+                vel.1 -= 1;
+                // Check if probe is in the target area
+                if pos.0 >= target_area.x_min
+                    && pos.0 <= target_area.x_max
+                    && pos.1 >= target_area.y_min
+                    && pos.1 <= target_area.y_max
+                {
+                    reached_target_area = true;
+                    break;
+                }
+            }
+            if reached_target_area {
+                good_vels.insert((x, y));
+            }
+        }
+    }
+    return good_vels.len();
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -84,5 +126,12 @@ mod test {
         let input = parse_input(&read_to_string("./input/2021/day17.txt").unwrap());
         let result = solve_part_1(&input);
         assert_eq!(7875, result);
+    }
+
+    #[test]
+    fn test_d17_p2_actual() {
+        let input = parse_input(&read_to_string("./input/2021/day17.txt").unwrap());
+        let result = solve_part_2(&input);
+        assert_eq!(2321, result);
     }
 }
