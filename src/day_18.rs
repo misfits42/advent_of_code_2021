@@ -15,7 +15,151 @@ fn parse_input(input: &str) -> Vec<String> {
     return snailfish_numbers;
 }
 
-fn calculate_magnitude_sum(snailfish_number: &String) -> u64 {
+#[aoc(day18, part1)]
+fn solve_part_1(snailfish_numbers: &Vec<String>) -> u64 {
+    let mut result = snailfish_numbers[0].to_string();
+    for i in 1..snailfish_numbers.len() {
+        result = add_snailfish_numbers(&result, &snailfish_numbers[i]);
+    }
+    // Calculate magnitude of result
+    return calculate_snailfish_number_magnitude(&result);
+}
+
+#[aoc(day18, part2)]
+fn solve_part_2(snailfish_numbers: &Vec<String>) -> u64 {
+    let mut largest_magnitude = 0;
+    for left in 0..snailfish_numbers.len() {
+        for right in (left + 1)..snailfish_numbers.len() {
+            if left == right || snailfish_numbers[left] == snailfish_numbers[right] {
+                continue;
+            }
+            // Try left first
+            let left_first_result =
+                add_snailfish_numbers(&snailfish_numbers[left], &snailfish_numbers[right]);
+            let left_first_magnitude = calculate_snailfish_number_magnitude(&left_first_result);
+            if left_first_magnitude > largest_magnitude {
+                largest_magnitude = left_first_magnitude;
+            }
+            // Try right first
+            let right_first_result =
+                add_snailfish_numbers(&snailfish_numbers[right], &snailfish_numbers[left]);
+            let right_first_magnitude = calculate_snailfish_number_magnitude(&right_first_result);
+            if right_first_magnitude > largest_magnitude {
+                largest_magnitude = right_first_magnitude;
+            }
+        }
+    }
+    return largest_magnitude;
+}
+
+/// Adds the two snailfish numbers and reduces the result. Note that addition of snailfish numbers
+/// if not commutative, meaning (left + right) may produce a different result to (right + left).
+fn add_snailfish_numbers(left: &String, right: &String) -> String {
+    let result = format!("[{},{}]", left, right);
+    // Keep applying reduction actions until no further reductions required on running result
+    let mut cursor: usize = 0;
+    let mut tokens = tokenise_snailfish_number(&result);
+    let mut depth = 0;
+    let mut explode_check_finished = false;
+    loop {
+        if cursor >= tokens.len() {
+            if explode_check_finished {
+                // Reduction finished if end reached with explode and split checks complete
+                break;
+            } else {
+                // Explode check finished - onto splits
+                explode_check_finished = true;
+                cursor = 0;
+                depth = 0;
+            }
+        }
+        match tokens[cursor].as_str() {
+            "[" => {
+                depth += 1;
+                cursor += 1;
+            }
+            "]" => {
+                depth -= 1;
+                cursor += 1;
+            }
+            "," => {
+                cursor += 1;
+            }
+            _ => {
+                // Numeric token
+                let value = tokens[cursor].parse::<u64>().unwrap();
+                // Explode
+                if depth > 4 {
+                    // Add left to previous numberic token
+                    let mut left_cursor = cursor;
+                    let left_value = value;
+                    loop {
+                        if left_cursor == 0 {
+                            break;
+                        }
+                        left_cursor -= 1;
+                        // Check if numeric token to left is found
+                        let target_base = tokens[left_cursor].parse::<u64>();
+                        if target_base.is_ok() {
+                            let target_base = target_base.unwrap();
+                            let sum = target_base + left_value;
+                            tokens[left_cursor] = sum.to_string();
+                            break;
+                        }
+                    }
+                    // Add right to next numeric token
+                    let right_value = tokens[cursor + 2].parse::<u64>().unwrap();
+                    let mut right_cursor = cursor + 2;
+                    loop {
+                        if right_cursor >= tokens.len() - 1 {
+                            break;
+                        }
+                        right_cursor += 1;
+                        // Check if numberic token to right is found
+                        let target_base = tokens[right_cursor].parse::<u64>();
+                        if target_base.is_ok() {
+                            let target_base = target_base.unwrap();
+                            let sum = target_base + right_value;
+                            tokens[right_cursor] = sum.to_string();
+                            break;
+                        }
+                    }
+                    // Replace exploded pair with 0
+                    tokens[cursor - 1] = String::from("0");
+                    for i in 0..4 {
+                        tokens[cursor + i] = String::from("");
+                    }
+                    // Go back to the beginning and re-check entire result string
+                    cursor = 0;
+                    depth = 0;
+                    tokens = tokenise_snailfish_number(&tokens.join(""));
+                // Split
+                } else if value >= 10 {
+                    if !explode_check_finished {
+                        cursor += 1;
+                        continue;
+                    }
+                    // println!("## Spliting at cursor {}", cursor);
+                    let new_pair_left = value / 2;
+                    let new_pair_right = (value + 1) / 2;
+                    let new_pair = format!("[{},{}]", new_pair_left, new_pair_right);
+                    tokens[cursor] = new_pair;
+                    // Start back at beginning and re-check entire result string, explodes first
+                    cursor = 0;
+                    depth = 0;
+                    tokens = tokenise_snailfish_number(&tokens.join(""));
+                    explode_check_finished = false;
+                } else {
+                    cursor += 1;
+                }
+            }
+        }
+    }
+    return tokens.join("");
+}
+
+/// Calculates the magnitude of the given snailfish number.
+fn calculate_snailfish_number_magnitude(snailfish_number: &String) -> u64 {
     let pair_regex = Regex::new(r"(\[\d+,\d+\])").unwrap();
     let pair_value_extract_regex = Regex::new(r"(\d+),(\d+)").unwrap();
     let mut magnitude_sum = snailfish_number.to_string();
@@ -24,7 +168,7 @@ fn calculate_magnitude_sum(snailfish_number: &String) -> u64 {
         let captures = {
             let caps = pair_regex.captures(&magnitude_sum);
             if caps.is_none() {
-                break
+                break;
             } else {
                 caps.unwrap()
             }
@@ -49,6 +193,8 @@ fn calculate_magnitude_sum(snailfish_number: &String) -> u64 {
     return magnitude_sum.parse::<u64>().unwrap();
 }
 
+/// Converts the snailfish number into tokens (opening brace, closing brace, comma or numeric
+/// token).
 fn tokenise_snailfish_number(snailfish_number: &String) -> Vec<String> {
     let mut output: Vec<String> = vec![];
     let input_chars = snailfish_number.chars().collect::<Vec<char>>();
@@ -78,116 +224,6 @@ fn tokenise_snailfish_number(snailfish_number: &String) -> Vec<String> {
     return output;
 }
 
-#[aoc(day18, part1)]
-fn solve_part_1(snailfish_numbers: &Vec<String>) -> u64 {
-    let mut result = snailfish_numbers[0].to_string();
-    for i in 1..snailfish_numbers.len() {
-        result = format!("[{},{}]", result, snailfish_numbers[i]);
-        // Keep applying reduction actions until no further reductions required on running result
-        let mut cursor: usize = 0;
-        let mut tokens = tokenise_snailfish_number(&result);
-        let mut depth = 0;
-        let mut explode_check_finished = false;
-        loop {
-            if cursor >= tokens.len() {
-                if explode_check_finished {
-                    // Reduction finished if end reached with explode and split checks complete
-                    break;
-                } else {
-                    // Explode check finished - onto splits
-                    explode_check_finished = true;
-                    cursor = 0;
-                    depth = 0;
-                }
-            }
-            match tokens[cursor].as_str() {
-                "[" => {
-                    depth += 1;
-                    cursor += 1;
-                },
-                "]" => {
-                    depth -= 1;
-                    cursor += 1;
-                },
-                "," => {
-                    cursor += 1;
-                },
-                _ => {
-                    // Numeric token
-                    let value = tokens[cursor].parse::<u64>().unwrap();
-                    // Explode
-                    if depth > 4 {
-                        // Add left to previous numberic token
-                        let mut left_cursor = cursor;
-                        let left_value = value;
-                        loop {
-                            if left_cursor == 0 {
-                                break;
-                            }
-                            left_cursor -= 1;
-                            // Check if numeric token to left is found
-                            let target_base = tokens[left_cursor].parse::<u64>();
-                            if target_base.is_ok() {
-                                let target_base = target_base.unwrap();
-                                let sum = target_base + left_value;
-                                tokens[left_cursor] = sum.to_string();
-                                break;
-                            }
-                        }
-                        // Add right to next numeric token
-                        let right_value = tokens[cursor + 2].parse::<u64>().unwrap();
-                        let mut right_cursor = cursor + 2;
-                        loop {
-                            if right_cursor >= tokens.len() - 1 {
-                                break;
-                            }
-                            right_cursor += 1;
-                            // Check if numberic token to right is found
-                            let target_base = tokens[right_cursor].parse::<u64>();
-                            if target_base.is_ok() {
-                                let target_base = target_base.unwrap();
-                                let sum = target_base + right_value;
-                                tokens[right_cursor] = sum.to_string();
-                                break;
-                            }
-                        }
-                        // Replace exploded pair with 0
-                        tokens[cursor - 1] = String::from("0");
-                        for i in 0..4 {
-                            tokens[cursor + i] = String::from("");
-                        }
-                        // Go back to the beginning and re-check entire result string
-                        cursor = 0;
-                        depth = 0;
-                        tokens = tokenise_snailfish_number(&tokens.join(""));
-                    // Split
-                    } else if value >= 10 {
-                        if !explode_check_finished {
-                            cursor += 1;
-                            continue;
-                        }
-                        // println!("## Spliting at cursor {}", cursor);
-                        let new_pair_left = value / 2;
-                        let new_pair_right = (value + 1) / 2;
-                        let new_pair = format!("[{},{}]", new_pair_left, new_pair_right);
-                        tokens[cursor] = new_pair;
-                        // Start back at beginning and re-check entire result string, explodes first
-                        cursor = 0;
-                        depth = 0;
-                        tokens = tokenise_snailfish_number(&tokens.join(""));
-                        explode_check_finished = false;
-                    } else {
-                        cursor += 1;
-                    }
-                }
-            }
-        }
-        result = tokens.join("");
-    }
-    // Calculate magnitude of result
-    return calculate_magnitude_sum(&result);
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -198,5 +234,12 @@ mod test {
         let input = parse_input(&read_to_string("./input/2021/day18.txt").unwrap());
         let result = solve_part_1(&input);
         assert_eq!(4435, result);
+    }
+
+    #[test]
+    fn test_d18_p2_actual() {
+        let input = parse_input(&read_to_string("./input/2021/day18.txt").unwrap());
+        let result = solve_part_2(&input);
+        assert_eq!(4802, result);
     }
 }
