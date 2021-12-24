@@ -51,6 +51,24 @@ fn solve_part_1(scanner_data: &Vec<Vec<(i64, i64, i64)>>) -> usize {
     return unique_beacons.len();
 }
 
+#[aoc(day19, part2)]
+fn solve_part_2(scanner_data: &Vec<Vec<(i64, i64, i64)>>) -> i64 {
+    let mut largest_m_dist = 0;
+    let (scanner_locations_abs, _beacon_relvecs_abs) = process_scanner_data(scanner_data);
+    for i in 0..scanner_data.len() {
+        for j in (i + 1)..scanner_data.len() {
+            let left = scanner_locations_abs.get(&i).unwrap();
+            let right = scanner_locations_abs.get(&j).unwrap();
+            let m_dist =
+                (left.0 - right.0).abs() + (left.1 - right.1).abs() + (left.2 - right.2).abs();
+            if m_dist > largest_m_dist {
+                largest_m_dist = m_dist;
+            }
+        }
+    }
+    return largest_m_dist;
+}
+
 /// Processes the given scanner data to find the absolute locations of each scanner, and the
 /// relative vector for each beacon to the scanner that detected it in the absolute
 /// frame-of-reference.
@@ -101,7 +119,6 @@ fn process_scanner_data(
                 for (dest_beacon_loc, dest_rel_vecs) in
                     scanner_constellations[*dest_scanner_index].iter()
                 {
-                    // new_scanner_data.push(*dest_beacon_loc);
                     for (src_beacon_loc, src_rel_vecs) in
                         scanner_constellations[src_scanner_index].iter()
                     {
@@ -110,7 +127,7 @@ fn process_scanner_data(
                         }
                     }
                 }
-                // The two scanner regions overlap if at least 12 beacons are found with matching constellation
+                // Overlap occurs if at least 12 beacons are found with matching constellation
                 if overlap_points.len() >= 12 {
                     break;
                 }
@@ -265,5 +282,12 @@ mod test {
         let input = parse_input(&read_to_string("./input/2021/day19.txt").unwrap());
         let result = solve_part_1(&input);
         assert_eq!(459, result);
+    }
+
+    #[test]
+    fn test_d19_p2_actual() {
+        let input = parse_input(&read_to_string("./input/2021/day19.txt").unwrap());
+        let result = solve_part_1(&input);
+        assert_eq!(19130, result);
     }
 }
