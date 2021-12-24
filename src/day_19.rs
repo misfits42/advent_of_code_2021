@@ -37,6 +37,29 @@ fn parse_input(input: &str) -> Vec<Vec<(i64, i64, i64)>> {
 
 #[aoc(day19, part1)]
 fn solve_part_1(scanner_data: &Vec<Vec<(i64, i64, i64)>>) -> usize {
+    let (scanner_locations_abs, beacon_relvecs_abs) = process_scanner_data(scanner_data);
+    // Determine number of unique beacons
+    let mut unique_beacons: HashSet<(i64, i64, i64)> = HashSet::new();
+    for (scanner_i, scanner_loc) in scanner_locations_abs.iter() {
+        // Relative vectors for each scanner are now in the absolute FoR
+        let rel_vecs = beacon_relvecs_abs.get(scanner_i).unwrap();
+        for rel_vec in rel_vecs {
+            let beacon_loc = add_vectors(scanner_loc, &rel_vec);
+            unique_beacons.insert(beacon_loc);
+        }
+    }
+    return unique_beacons.len();
+}
+
+/// Processes the given scanner data to find the absolute locations of each scanner, and the
+/// relative vector for each beacon to the scanner that detected it in the absolute
+/// frame-of-reference.
+fn process_scanner_data(
+    scanner_data: &Vec<Vec<(i64, i64, i64)>>,
+) -> (
+    HashMap<usize, (i64, i64, i64)>,
+    HashMap<usize, Vec<(i64, i64, i64)>>,
+) {
     // Track scanners with known locations
     let mut scanner_locations_abs: HashMap<usize, (i64, i64, i64)> = HashMap::new();
     scanner_locations_abs.insert(0, (0, 0, 0));
@@ -47,14 +70,6 @@ fn solve_part_1(scanner_data: &Vec<Vec<(i64, i64, i64)>>) -> usize {
     let mut scanners_unlocated: HashSet<usize> = HashSet::new();
     for i in 1..scanner_data.len() {
         scanners_unlocated.insert(i);
-    }
-    // Record beacons from scanner 0 as having known absolute positions
-    let mut beacon_locations_abs: HashMap<usize, HashSet<(i64, i64, i64)>> = HashMap::new();
-    for loc in scanner_data[0].iter() {
-        beacon_locations_abs
-            .entry(0)
-            .or_insert(HashSet::new())
-            .insert(*loc);
     }
     // For each scanner, calculate relative vectors of each beacon to others detected by scanner
     let mut scanner_constellations: Vec<HashMap<(i64, i64, i64), HashSet<(i64, i64, i64)>>> =
@@ -72,7 +87,10 @@ fn solve_part_1(scanner_data: &Vec<Vec<(i64, i64, i64)>>) -> usize {
         }
         // From current source scanner, find all other scanners that overlap with its detect cube
         let src_scanner_index = scanners_for_source.pop_front().unwrap();
-        let src_scanner_loc = scanner_locations_abs.get(&src_scanner_index).unwrap().clone();
+        let src_scanner_loc = scanner_locations_abs
+            .get(&src_scanner_index)
+            .unwrap()
+            .clone();
         let mut scanners_located: Vec<usize> = vec![];
         for dest_scanner_index in scanners_unlocated.iter() {
             // Try the 24 different orientations
@@ -119,17 +137,17 @@ fn solve_part_1(scanner_data: &Vec<Vec<(i64, i64, i64)>>) -> usize {
             scanners_unlocated.remove(&loc);
         }
     }
-    // Determine number of unique beacons
-    let mut unique_beacons: HashSet<(i64, i64, i64)> = HashSet::new();
-    for (scanner_i, scanner_loc) in scanner_locations_abs.iter() {
-        // Relative vectors for each scanner are now in the absolute FoR
-        let rel_vecs: Vec<(i64, i64, i64)> = scanner_constellations[*scanner_i].keys().map(|x| *x).collect();
-        for rel_vec in rel_vecs {
-            let beacon_loc = add_vectors(scanner_loc, &rel_vec);
-            unique_beacons.insert(beacon_loc);
+    // Extract abs FoR beacon locations for each scanner
+    let mut beacon_locations_abs: HashMap<usize, Vec<(i64, i64, i64)>> = HashMap::new();
+    for scanner_i in 0..scanner_constellations.len() {
+        for loc in scanner_constellations[scanner_i].keys() {
+            beacon_locations_abs
+                .entry(scanner_i)
+                .or_insert(vec![])
+                .push(*loc);
         }
     }
-    return unique_beacons.len();
+    return (scanner_locations_abs, beacon_locations_abs);
 }
 
 /// Uses the given beacon locations to calculate the relative vectors for each beacon to all of the
@@ -162,7 +180,6 @@ fn calculate_scanner_constellation(
 fn calculate_relative_vector(src: &(i64, i64, i64), dest: &(i64, i64, i64)) -> (i64, i64, i64) {
     return (dest.0 - src.0, dest.1 - src.1, dest.2 - src.2);
 }
-
 
 /// Adds the two given vectors together.
 fn add_vectors(src: &(i64, i64, i64), dest: &(i64, i64, i64)) -> (i64, i64, i64) {
