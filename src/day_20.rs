@@ -59,66 +59,18 @@ fn solve_part_1(
 ) -> usize {
     let img_enhance_alg = image_input.0.clone();
     let mut input_image = image_input.1.clone();
-    // let mut x_lim = image_input.2;
-    // let mut y_lim = image_input.3;
     let (mut x_min, mut y_min) = image_input.2;
     let (mut y_max, mut x_max) = image_input.3;
-    let mut default_c = *input_image.get(&(x_min, y_min)).unwrap();
-    let mut output_image: HashMap<(i64, i64), char> = HashMap::new();
+    // Apply 2 iterations of image enhancement
     for _ in 0..2 {
-        // Apply first iteration
-        for y in y_min..=y_max {
-            for x in x_min..=x_max {
-                // Determine points surrounding current location
-                let pos = (x, y);
-                let mut surround_points: Vec<(i64, i64)> = vec![];
-                for delta_y in -1..=1 {
-                    for delta_x in -1..=1 {
-                        surround_points.push((pos.0 + delta_x, pos.1 + delta_y));
-                    }
-                }
-                surround_points.sort_by(|a, b| {
-                    if a.1 < b.1 {
-                        return Ordering::Less;
-                    }
-                    if a.1 == b.1 && a.0 < b.0 {
-                        return Ordering::Less;
-                    }
-                    if a.1 == b.1 && a.0 > b.0 {
-                        return Ordering::Greater;
-                    }
-                    if a.1 > b.1 {
-                        return Ordering::Greater;
-                    }
-                    return Ordering::Equal;
-                });
-                // Determine img enhance alg index
-                let mut index_string = String::new();
-                for pos_s in surround_points.iter() {
-                    let c = *input_image.get(&pos_s).unwrap_or(&default_c);
-                    index_string.push(c);
-                }
-                let index = usize::from_str_radix(&index_string, 2).unwrap();
-                output_image.insert((x, y), img_enhance_alg[index]);
-            }
-        }
-        // Pad out another layer
-        default_c = *output_image.get(&(x_min, y_min)).unwrap();
-        x_min -= 1;
-        y_min -= 1;
-        x_max += 1;
-        y_max += 1;
-        for x_new in x_min..=x_max {
-            input_image.insert((x_new, y_min), default_c);
-            input_image.insert((x_new, y_max), default_c);
-        }
-        for y_new in y_min..=y_max {
-            input_image.insert((x_min, y_new), default_c);
-            input_image.insert((x_max, y_new), default_c);
-        }
-        // Apply next iteration
-        input_image = output_image;
-        output_image = HashMap::new();
+        input_image = apply_image_enhancement(
+            &input_image,
+            &img_enhance_alg,
+            &mut x_min,
+            &mut x_max,
+            &mut y_min,
+            &mut y_max,
+        );
     }
     return input_image.values().filter(|x| **x == '1').count();
 }
@@ -129,68 +81,87 @@ fn solve_part_2(
 ) -> usize {
     let img_enhance_alg = image_input.0.clone();
     let mut input_image = image_input.1.clone();
-    // let mut x_lim = image_input.2;
-    // let mut y_lim = image_input.3;
     let (mut x_min, mut y_min) = image_input.2;
     let (mut y_max, mut x_max) = image_input.3;
-    let mut default_c = *input_image.get(&(x_min, y_min)).unwrap();
-    let mut output_image: HashMap<(i64, i64), char> = HashMap::new();
+    // Apply 50 iterations of image enhancement
     for _ in 0..50 {
-        // Apply first iteration
-        for y in y_min..=y_max {
-            for x in x_min..=x_max {
-                // Determine points surrounding current location
-                let pos = (x, y);
-                let mut surround_points: Vec<(i64, i64)> = vec![];
-                for delta_y in -1..=1 {
-                    for delta_x in -1..=1 {
-                        surround_points.push((pos.0 + delta_x, pos.1 + delta_y));
-                    }
-                }
-                surround_points.sort_by(|a, b| {
-                    if a.1 < b.1 {
-                        return Ordering::Less;
-                    }
-                    if a.1 == b.1 && a.0 < b.0 {
-                        return Ordering::Less;
-                    }
-                    if a.1 == b.1 && a.0 > b.0 {
-                        return Ordering::Greater;
-                    }
-                    if a.1 > b.1 {
-                        return Ordering::Greater;
-                    }
-                    return Ordering::Equal;
-                });
-                // Determine img enhance alg index
-                let mut index_string = String::new();
-                for pos_s in surround_points.iter() {
-                    let c = *input_image.get(&pos_s).unwrap_or(&default_c);
-                    index_string.push(c);
-                }
-                let index = usize::from_str_radix(&index_string, 2).unwrap();
-                output_image.insert((x, y), img_enhance_alg[index]);
-            }
-        }
-        // Pad out another layer
-        default_c = *output_image.get(&(x_min, y_min)).unwrap();
-        x_min -= 1;
-        y_min -= 1;
-        x_max += 1;
-        y_max += 1;
-        for x_new in x_min..=x_max {
-            input_image.insert((x_new, y_min), default_c);
-            input_image.insert((x_new, y_max), default_c);
-        }
-        for y_new in y_min..=y_max {
-            input_image.insert((x_min, y_new), default_c);
-            input_image.insert((x_max, y_new), default_c);
-        }
-        // Apply next iteration
-        input_image = output_image;
-        output_image = HashMap::new();
+        input_image = apply_image_enhancement(
+            &input_image,
+            &img_enhance_alg,
+            &mut x_min,
+            &mut x_max,
+            &mut y_min,
+            &mut y_max,
+        );
     }
     return input_image.values().filter(|x| **x == '1').count();
+}
+
+/// Applies single round of image enhancement to the input image. An additional layer of default
+/// characters are padded around the output image, based on what character fills the unrecorded
+/// additional infinite space surrounding the input and output images.
+fn apply_image_enhancement(
+    input_image: &HashMap<(i64, i64), char>,
+    img_enhance_alg: &Vec<char>,
+    x_min: &mut i64,
+    x_max: &mut i64,
+    y_min: &mut i64,
+    y_max: &mut i64,
+) -> HashMap<(i64, i64), char> {
+    let mut default_c = *input_image.get(&(*x_min, *y_min)).unwrap();
+    let mut output_image: HashMap<(i64, i64), char> = HashMap::new();
+    // Apply first iteration
+    for y in *y_min..=*y_max {
+        for x in *x_min..=*x_max {
+            // Determine points surrounding current location
+            let pos = (x, y);
+            let mut surround_points: Vec<(i64, i64)> = vec![];
+            for delta_y in -1..=1 {
+                for delta_x in -1..=1 {
+                    surround_points.push((pos.0 + delta_x, pos.1 + delta_y));
+                }
+            }
+            surround_points.sort_by(|a, b| {
+                if a.1 < b.1 {
+                    return Ordering::Less;
+                }
+                if a.1 == b.1 && a.0 < b.0 {
+                    return Ordering::Less;
+                }
+                if a.1 == b.1 && a.0 > b.0 {
+                    return Ordering::Greater;
+                }
+                if a.1 > b.1 {
+                    return Ordering::Greater;
+                }
+                return Ordering::Equal;
+            });
+            // Determine img enhance alg index
+            let mut index_string = String::new();
+            for pos_s in surround_points.iter() {
+                let c = *input_image.get(&pos_s).unwrap_or(&default_c);
+                index_string.push(c);
+            }
+            let index = usize::from_str_radix(&index_string, 2).unwrap();
+            output_image.insert((x, y), img_enhance_alg[index]);
+        }
+    }
+    // Pad out another layer
+    default_c = *output_image.get(&(*x_min, *y_min)).unwrap();
+    *x_min -= 1;
+    *y_min -= 1;
+    *x_max += 1;
+    *y_max += 1;
+    for x_new in *x_min..=*x_max {
+        output_image.insert((x_new, *y_min), default_c);
+        output_image.insert((x_new, *y_max), default_c);
+    }
+    for y_new in *y_min..=*y_max {
+        output_image.insert((*x_min, y_new), default_c);
+        output_image.insert((*x_max, y_new), default_c);
+    }
+    // Apply next iteration
+    return output_image;
 }
 
 #[cfg(test)]
