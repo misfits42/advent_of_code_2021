@@ -1,7 +1,7 @@
 /// Represents the 100-sided deterministic die used in AOC 2021 Day 21.
 struct DeterministicDie {
     times_rolled: u64,
-    next_roll: u64
+    next_roll: u64,
 }
 
 impl DeterministicDie {
@@ -25,14 +25,14 @@ impl DeterministicDie {
     }
 }
 
+/// Represents the state of universe required to play successive turns in the Dirac Dice game.
 #[derive(Copy, Clone)]
 struct UniverseState {
     p1_pos: u64,
     p2_pos: u64,
     p1_score: u64,
     p2_score: u64,
-    p1_rolls_this_turn: u64,
-    p2_rolls_this_turn: u64
+    universe_mult: u64,
 }
 
 impl UniverseState {
@@ -42,8 +42,7 @@ impl UniverseState {
             p2_pos: p2_pos,
             p1_score: 0,
             p2_score: 0,
-            p1_rolls_this_turn: 3,
-            p2_rolls_this_turn: 3,
+            universe_mult: 1,
         }
     }
 }
@@ -51,10 +50,22 @@ impl UniverseState {
 #[aoc_generator(day21)]
 fn parse_input(input: &str) -> (u64, u64) {
     let mut input_lines = input.lines();
-    let p1_start = input_lines.next().unwrap().trim().split(": ").collect::<Vec<&str>>()[1]
-        .parse::<u64>().unwrap();
-    let p2_start = input_lines.next().unwrap().trim().split(": ").collect::<Vec<&str>>()[1]
-        .parse::<u64>().unwrap();
+    let p1_start = input_lines
+        .next()
+        .unwrap()
+        .trim()
+        .split(": ")
+        .collect::<Vec<&str>>()[1]
+        .parse::<u64>()
+        .unwrap();
+    let p2_start = input_lines
+        .next()
+        .unwrap()
+        .trim()
+        .split(": ")
+        .collect::<Vec<&str>>()[1]
+        .parse::<u64>()
+        .unwrap();
     return (p1_start, p2_start);
 }
 
@@ -102,7 +113,10 @@ fn solve_part_1(player_start_pos: &(u64, u64)) -> u64 {
 #[aoc(day21, part2)]
 fn solve_part_2(player_start_pos: &(u64, u64)) -> u64 {
     let universe_state = UniverseState::new(player_start_pos.0, player_start_pos.1);
-    let (p1_wins, p2_wins) = play_turn_dirac(&universe_state);
+    // Generate possible roll values and counts for possible combos of three Dirac dice rolls
+    let roll_val_counts: Vec<(u64, u64)> =
+        vec![(3, 1), (4, 3), (5, 6), (6, 7), (7, 6), (8, 3), (9, 1)];
+    let (p1_wins, p2_wins) = play_turn_dirac(&universe_state, &roll_val_counts);
     if p1_wins > p2_wins {
         return p1_wins;
     } else {
@@ -110,59 +124,51 @@ fn solve_part_2(player_start_pos: &(u64, u64)) -> u64 {
     }
 }
 
-fn play_turn_dirac(input_state: &UniverseState) -> (u64, u64) {
-    let mut universe_state = input_state.clone();
+/// Plays a turn of the Dirac dice game, with input universe split as required after Player 1 and
+/// Player 2 turns.
+fn play_turn_dirac(universe_0: &UniverseState, roll_val_counts: &Vec<(u64, u64)>) -> (u64, u64) {
     let mut p1_wins = 0;
     let mut p2_wins = 0;
-    // Check if a player has won
-    if input_state.p1_score >= 21 {
-        println!(">>>> Player 1 wins: {}", input_state.p1_score);
-        return (1, 0);
-    }
-    if input_state.p2_score >= 21 {
-        println!(">>>> Player 2 wins: {}", input_state.p2_score);
-        return (0, 1);
-    }
     // P1 turns
-    while universe_state.p1_rolls_this_turn > 0 {
-        universe_state.p1_rolls_this_turn -= 1;
-        for roll in 1..=3 {
-            let mut universe_state_split = universe_state.clone();
-            universe_state_split.p1_pos += roll;
-            if universe_state_split.p1_pos > 10 {
-                universe_state_split.p1_pos = universe_state_split.p1_pos - 10;
-            }
-            if universe_state_split.p1_rolls_this_turn == 0 {
-                universe_state_split.p1_score += universe_state_split.p1_pos;
-            }
-            let (p1_sub_wins, p2_sub_wins) = play_turn_dirac(&universe_state_split);
-            p1_wins += p1_sub_wins;
-            p2_wins += p2_sub_wins;
+    let mut candidate_universes: Vec<UniverseState> = vec![];
+    for (roll_val, count) in roll_val_counts {
+        let mut universe_state_split = universe_0.clone();
+        universe_state_split.p1_pos += roll_val;
+        universe_state_split.universe_mult *= count;
+        if universe_state_split.p1_pos > 10 {
+            universe_state_split.p1_pos = universe_state_split.p1_pos - 10;
+        }
+        universe_state_split.p1_score += universe_state_split.p1_pos;
+        if universe_state_split.p1_score >= 21 {
+            p1_wins += universe_state_split.universe_mult;
+        } else {
+            candidate_universes.push(universe_state_split);
         }
     }
     // P2 turns
-    while universe_state.p2_rolls_this_turn > 0 {
-        universe_state.p2_rolls_this_turn -= 1;
-        for roll in 1..=3 {
-            let mut universe_state_split = universe_state.clone();
-            universe_state_split.p2_pos += roll;
+    let mut new_candidate_universes: Vec<UniverseState> = vec![];
+    for universe in candidate_universes {
+        for (roll_val, count) in roll_val_counts {
+            let mut universe_state_split = universe.clone();
+            universe_state_split.p2_pos += roll_val;
+            universe_state_split.universe_mult *= count;
             if universe_state_split.p2_pos > 10 {
                 universe_state_split.p2_pos = universe_state_split.p2_pos - 10;
             }
-            if universe_state_split.p2_rolls_this_turn == 0 {
-                universe_state_split.p2_score += universe_state_split.p2_pos;
+            universe_state_split.p2_score += universe_state_split.p2_pos;
+            if universe_state_split.p2_score >= 21 {
+                p2_wins += universe_state_split.universe_mult;
+            } else {
+                new_candidate_universes.push(universe_state_split);
             }
-            let (p1_sub_wins, p2_sub_wins) = play_turn_dirac(&universe_state_split);
-            p1_wins += p1_sub_wins;
-            p2_wins += p2_sub_wins;
         }
     }
-    // If no player has won, conduct another turn
-    universe_state.p1_rolls_this_turn = 3;
-    universe_state.p2_rolls_this_turn = 3;
-    let (sub_p1_wins, sub_p2_wins) = play_turn_dirac(&universe_state);
-    p1_wins += sub_p1_wins;
-    p2_wins += sub_p2_wins;
+    // Keep playing for all universes without a winner yet
+    for universe in new_candidate_universes {
+        let (sub_p1_wins, sub_p2_wins) = play_turn_dirac(&universe, roll_val_counts);
+        p1_wins += sub_p1_wins;
+        p2_wins += sub_p2_wins;
+    }
     return (p1_wins, p2_wins);
 }
 
@@ -176,5 +182,12 @@ mod test {
         let input = parse_input(&read_to_string("./input/2021/day21.txt").unwrap());
         let result = solve_part_1(&input);
         assert_eq!(920079, result);
+    }
+
+    #[test]
+    fn test_d21_p2_actual() {
+        let input = parse_input(&read_to_string("./input/2021/day21.txt").unwrap());
+        let result = solve_part_2(&input);
+        assert_eq!(56852759190649, result);
     }
 }
