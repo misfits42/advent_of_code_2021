@@ -287,7 +287,7 @@ mod test {
     #[test]
     fn test_d19_p2_actual() {
         let input = parse_input(&read_to_string("./input/2021/day19.txt").unwrap());
-        let result = solve_part_1(&input);
+        let result = solve_part_2(&input);
         assert_eq!(19130, result);
     }
 }
